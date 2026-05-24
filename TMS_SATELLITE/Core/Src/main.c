@@ -21,7 +21,8 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "sat_adc.h"
+#include "sat_spi.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -85,7 +86,15 @@ int main(void)
 
   /* Initialize all configured peripherals */
   /* USER CODE BEGIN 2 */
+  sat_adc_init();
 
+  /* Take one initial set of readings so the very first SPI transaction
+   * doesn't ship out zeros. */
+  sat_adc_sample_all();
+
+  /* Arm the SPI slave. From here on the peripheral re-arms itself in the
+   * TxRxCplt callback, independent of the foreground loop. */
+  sat_spi_init();
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -95,6 +104,7 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+    sat_adc_sample_all();
   }
   /* USER CODE END 3 */
 }

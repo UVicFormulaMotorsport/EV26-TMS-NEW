@@ -21,7 +21,8 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "can_tms.h"
+#include <stdint.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -31,7 +32,7 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-
+#define TMS_TX_PERIOD_MS 250u   /* 4 Hz */
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -85,7 +86,14 @@ int main(void)
 
   /* Initialize all configured peripherals */
   /* USER CODE BEGIN 2 */
+  can_tms_init();
 
+  /* Hardcoded test pattern in decidegrees C (20.0, 25.0, 30.0, 35.0, 40.0, 45.0).
+   * Distinctive on a CAN analyzer — replace with satellite readings once
+   * sat_comm + temp_convert are implemented. */
+  int16_t segment_temp_decideg[CAN_TMS_SEG_COUNT] = { 200, 250, 300, 350, 400, 450 };
+
+  uint32_t last_tx_tick = HAL_GetTick();
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -95,6 +103,17 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+    if ((HAL_GetTick() - last_tx_tick) >= TMS_TX_PERIOD_MS) {
+      last_tx_tick += TMS_TX_PERIOD_MS;
+
+      /* TODO: poll all 6 satellites over SPI and compute the hottest reading
+       * per segment into segment_temp_decideg[]. Stubbed for now — using the
+       * hardcoded test pattern set above. */
+      /* TODO: raw-ADC -> decidegrees conversion lives elsewhere; plug it in
+       * once it lands. */
+
+      (void)can_tms_send_segment_temps(segment_temp_decideg);
+    }
   }
   /* USER CODE END 3 */
 }
