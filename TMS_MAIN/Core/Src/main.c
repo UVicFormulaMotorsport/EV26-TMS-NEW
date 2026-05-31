@@ -32,7 +32,8 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-#define TMS_TX_PERIOD_MS 250u   /* 4 Hz */
+#define TMS_TX_TICK_MS         100u  /* 10 Hz per-module thermistor data */
+#define TMS_ADDR_CLAIM_DECIM   2u    /* every 2nd tick (= 200 ms) emits address claim */
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -88,12 +89,20 @@ int main(void)
   /* USER CODE BEGIN 2 */
   can_tms_init();
 
-  /* Hardcoded test pattern in decidegrees C (20.0, 25.0, 30.0, 35.0, 40.0, 45.0).
-   * Distinctive on a CAN analyzer — replace with satellite readings once
-   * sat_comm + temp_convert are implemented. */
-  int16_t segment_temp_decideg[CAN_TMS_SEG_COUNT] = { 200, 250, 300, 350, 400, 450 };
+  /* Hardcoded test pattern: 6 modules with distinctive ramping temps so each
+   * one is identifiable on a CAN analyzer. Replace with real per-satellite
+   * stats once sat_comm + raw-ADC conversion are wired in. */
+  static const can_tms_module_data_t test_modules[CAN_TMS_MODULE_COUNT] = {
+    { .low_c = 20, .high_c = 25, .avg_c = 22, .therm_count = 6, .high_id = 0, .low_id = 5 },
+    { .low_c = 22, .high_c = 27, .avg_c = 24, .therm_count = 6, .high_id = 1, .low_id = 4 },
+    { .low_c = 24, .high_c = 29, .avg_c = 26, .therm_count = 6, .high_id = 2, .low_id = 3 },
+    { .low_c = 26, .high_c = 31, .avg_c = 28, .therm_count = 6, .high_id = 3, .low_id = 2 },
+    { .low_c = 28, .high_c = 33, .avg_c = 30, .therm_count = 6, .high_id = 4, .low_id = 1 },
+    { .low_c = 30, .high_c = 35, .avg_c = 32, .therm_count = 6, .high_id = 5, .low_id = 0 },
+  };
 
   uint32_t last_tx_tick = HAL_GetTick();
+  uint32_t tick_count = 0;
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -103,16 +112,22 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-    if ((HAL_GetTick() - last_tx_tick) >= TMS_TX_PERIOD_MS) {
-      last_tx_tick += TMS_TX_PERIOD_MS;
+    if ((HAL_GetTick() - last_tx_tick) >= TMS_TX_TICK_MS) {
+      last_tx_tick += TMS_TX_TICK_MS;
+      tick_count++;
 
-      /* TODO: poll all 6 satellites over SPI and compute the hottest reading
-       * per segment into segment_temp_decideg[]. Stubbed for now — using the
-       * hardcoded test pattern set above. */
-      /* TODO: raw-ADC -> decidegrees conversion lives elsewhere; plug it in
-       * once it lands. */
+      /* TODO: poll satellites over SPI and reduce raw ADC -> per-module
+       * stats. Stubbed for now with test_modules[]. */
 
-      (void)can_tms_send_segment_temps(segment_temp_decideg);
+      for (uint8_t m = 0; m < CAN_TMS_MODULE_COUNT; m++) {
+        (void)can_tms_send_module_data(m, &test_modules[m]);
+      }
+
+      if ((tick_count % TMS_ADDR_CLAIM_DECIM) == 0) {
+        for (uint8_t m = 0; m < CAN_TMS_MODULE_COUNT; m++) {
+          (void)can_tms_send_address_claim(m);
+        }
+      }
     }
   }
   /* USER CODE END 3 */
