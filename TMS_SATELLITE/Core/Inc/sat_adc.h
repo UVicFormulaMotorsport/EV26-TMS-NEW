@@ -29,4 +29,16 @@ extern volatile uint16_t sat_adc_thermistor_raw[SAT_ADC_THERMISTOR_COUNT];
 void sat_adc_init(void);
 void sat_adc_sample_all(void);
 
+/* Reduce this board's sampled channels to the single value that represents the
+ * pack's hottest cell — the one number this satellite reports over SPI.
+ *
+ * POLARITY CAVEAT: "hottest = max raw ADC count" assumes higher temperature ->
+ * higher ADC reading (e.g. PTC, or NTC in a high-side divider). If the wiring
+ * is the opposite (common for an NTC pulled up to Vref), hottest is the MIN
+ * raw instead and this must flip. The direction is unknown until the
+ * calibration curve / divider topology is confirmed with the chief eng, so
+ * this is the one knob to revisit alongside thermistor.c on TMS_MAIN.
+ */
+uint16_t sat_adc_hottest_raw(void);
+
 #endif /* INC_SAT_ADC_H_ */

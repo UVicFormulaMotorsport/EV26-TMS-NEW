@@ -60,3 +60,19 @@ void sat_adc_sample_all(void)
     memcpy((void *)sat_adc_thermistor_raw, local, sizeof(local));
     __enable_irq();
 }
+
+uint16_t sat_adc_hottest_raw(void)
+{
+    /* See the POLARITY CAVEAT in sat_adc.h. Currently: hottest == max raw. */
+    uint16_t hottest = 0;
+
+    __disable_irq();
+    for (int i = 0; i < SAT_ADC_THERMISTOR_COUNT; i++) {
+        if (sat_adc_thermistor_raw[i] > hottest) {
+            hottest = sat_adc_thermistor_raw[i];
+        }
+    }
+    __enable_irq();
+
+    return hottest;
+}

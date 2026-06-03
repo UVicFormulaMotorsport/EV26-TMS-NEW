@@ -26,6 +26,7 @@
 /* USER CODE BEGIN Includes */
 #include "can_tms.h"
 #include "sat_comm.h"
+#include "thermistor.h"
 #include <stdint.h>
 /* USER CODE END Includes */
 
@@ -96,22 +97,11 @@ int main(void)
   MX_SPI1_Init();
   /* USER CODE BEGIN 2 */
   can_tms_init();
-  sat_comm_init();   /* idle all satellite CS lines high */
+  sat_comm_init();   /* idle the shared satellite CS line high */
 
-  /* Latest raw counts from each satellite, refreshed every tick. */
-  static sat_comm_reading_t sat_readings[CAN_TMS_MODULE_COUNT];
-
-  /* Hardcoded test pattern: 6 modules with distinctive ramping temps so each
-   * one is identifiable on a CAN analyzer. Replace with real per-satellite
-   * stats once sat_comm + raw-ADC conversion are wired in. */
-  static const can_tms_module_data_t test_modules[CAN_TMS_MODULE_COUNT] = {
-    { .low_c = 20, .high_c = 25, .avg_c = 22, .therm_count = 6, .high_id = 0, .low_id = 5 },
-    { .low_c = 22, .high_c = 27, .avg_c = 24, .therm_count = 6, .high_id = 1, .low_id = 4 },
-    { .low_c = 24, .high_c = 29, .avg_c = 26, .therm_count = 6, .high_id = 2, .low_id = 3 },
-    { .low_c = 26, .high_c = 31, .avg_c = 28, .therm_count = 6, .high_id = 3, .low_id = 2 },
-    { .low_c = 28, .high_c = 33, .avg_c = 30, .therm_count = 6, .high_id = 4, .low_id = 1 },
-    { .low_c = 30, .high_c = 35, .avg_c = 32, .therm_count = 6, .high_id = 5, .low_id = 0 },
-  };
+  /* Latest hottest-cell raw count per pack + per-pack poll-success flags. */
+  static uint16_t seg_raw[SAT_COMM_SEGMENT_COUNT];
+  static uint8_t  seg_valid[SAT_COMM_SEGMENT_COUNT];
 
   uint32_t last_tx_tick = HAL_GetTick();
   uint32_t tick_count = 0;
@@ -128,21 +118,17 @@ int main(void)
       last_tx_tick += TMS_TX_TICK_MS;
       tick_count++;
 
-      /* Stage 2 (send to main): pull raw counts off every satellite. */
-      sat_comm_poll_all(sat_readings);
+      /* Poll the 6 packs over the shared bus: one hottest-cell raw each. */
+      sat_comm_poll_round(seg_raw, seg_valid);
 
-      /* TODO stage 3 (convert + reduce): raw ADC -> int8 °C (VCU transplant)
-       * then collapse each satellite's 6 readings into a can_tms_module_data_t
-       * (low/high/avg + high_id/low_id). Until that lands, CAN keeps sending
-       * the test_modules[] pattern so the bus stays exercised. */
-      for (uint8_t m = 0; m < CAN_TMS_MODULE_COUNT; m++) {
-        (void)can_tms_send_module_data(m, &test_modules[m]);
-      }
+      /* Convert (PLACEHOLDER curve) + reduce to one Orion module frame. */
+      can_tms_module_data_t module_data;
+      thermistor_build_module_data(seg_raw, seg_valid, &module_data);
+
+      (void)can_tms_send_module_data(CAN_TMS_MODULE_INDEX, &module_data);
 
       if ((tick_count % TMS_ADDR_CLAIM_DECIM) == 0) {
-        for (uint8_t m = 0; m < CAN_TMS_MODULE_COUNT; m++) {
-          (void)can_tms_send_address_claim(m);
-        }
+        (void)can_tms_send_address_claim(CAN_TMS_MODULE_INDEX);
       }
     }
   }
