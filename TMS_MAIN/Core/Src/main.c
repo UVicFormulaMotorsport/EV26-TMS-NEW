@@ -18,14 +18,14 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "adc.h"
 #include "can.h"
-#include "spi.h"
 #include "gpio.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "can_tms.h"
-#include "sat_comm.h"
+#include "adc_thermistor.h"
 #include "thermistor.h"
 #include <stdint.h>
 /* USER CODE END Includes */
@@ -94,14 +94,14 @@ int main(void)
   MX_GPIO_Init();
   MX_CAN1_Init();
   MX_CAN2_Init();
-  MX_SPI1_Init();
+  MX_ADC1_Init();
   /* USER CODE BEGIN 2 */
   can_tms_init();
-  sat_comm_init();   /* idle the shared satellite CS line high */
+  adc_thermistor_init();
 
-  /* Latest hottest-cell raw count per pack + per-pack poll-success flags. */
-  static uint16_t seg_raw[SAT_COMM_SEGMENT_COUNT];
-  static uint8_t  seg_valid[SAT_COMM_SEGMENT_COUNT];
+  /* Latest raw count per pack thermistor + per-channel conversion-OK flags. */
+  static uint16_t seg_raw[ADC_THERM_COUNT];
+  static uint8_t  seg_valid[ADC_THERM_COUNT];
 
   uint32_t last_tx_tick = HAL_GetTick();
   uint32_t tick_count = 0;
@@ -118,8 +118,8 @@ int main(void)
       last_tx_tick += TMS_TX_TICK_MS;
       tick_count++;
 
-      /* Poll the 6 packs over the shared bus: one hottest-cell raw each. */
-      sat_comm_poll_round(seg_raw, seg_valid);
+      /* Read all 6 pack thermistors directly off this board's ADC. */
+      adc_thermistor_read_all(seg_raw, seg_valid);
 
       /* Convert (PLACEHOLDER curve) + reduce to one Orion module frame. */
       can_tms_module_data_t module_data;

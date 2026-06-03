@@ -7,7 +7,6 @@
  */
 
 #include "thermistor.h"
-#include "sat_comm.h"
 
 #warning "thermistor_raw_to_c() is an UNCALIBRATED PLACEHOLDER - replace with the real curve before relying on TMS temperatures"
 
@@ -36,7 +35,7 @@ void thermistor_build_module_data(const uint16_t *raw, const uint8_t *valid,
     uint8_t high_id = 0;
     uint8_t low_id = 0;
 
-    for (uint8_t seg = 0; seg < SAT_COMM_SEGMENT_COUNT; seg++) {
+    for (uint8_t seg = 0; seg < CAN_TMS_THERMS_PER_MODULE; seg++) {
         if (valid != NULL && !valid[seg]) {
             continue;   /* skip a failed poll rather than feed in a fake 0 */
         }
@@ -65,7 +64,7 @@ void thermistor_build_module_data(const uint16_t *raw, const uint8_t *valid,
         out->avg_c = (int8_t)(sum / count);
     }
 
-    out->therm_count = (uint8_t)SAT_COMM_SEGMENT_COUNT;  /* always 6 per spec */
+    out->therm_count = (uint8_t)CAN_TMS_THERMS_PER_MODULE;  /* always 6 per spec */
     out->high_id = high_id;
     out->low_id = low_id;
 }

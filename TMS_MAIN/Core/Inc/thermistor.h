@@ -23,10 +23,10 @@
 /* Convert one raw ADC count to signed °C (1 °C/LSB on the wire). PLACEHOLDER. */
 int8_t thermistor_raw_to_c(uint16_t raw);
 
-/* Convert + reduce a full poll round into the J1939 module payload. raw[] and
- * valid[] are SAT_COMM_SEGMENT_COUNT long; invalid segments are excluded from
- * low/high/avg. therm_count is always 6 per spec. high_id/low_id index the
- * hottest/coldest segment (0..5). */
+/* Convert + reduce a set of pack readings into the J1939 module payload. raw[]
+ * and valid[] are CAN_TMS_THERMS_PER_MODULE long; invalid packs are excluded
+ * from low/high/avg. therm_count is always 6 per spec. high_id/low_id index the
+ * hottest/coldest pack (0..5). */
 void thermistor_build_module_data(const uint16_t *raw, const uint8_t *valid,
                                   can_tms_module_data_t *out);
 
