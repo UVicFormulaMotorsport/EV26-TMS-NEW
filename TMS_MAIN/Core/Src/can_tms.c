@@ -19,7 +19,7 @@ static CAN_TxHeaderTypeDef tx_header_addr_claim;
 static CAN_TxHeaderTypeDef tx_header_therm_data;
 
 static CAN_HandleTypeDef * const tx_buses[] = { &hcan1, &hcan2 };
-#define TX_BUS_COUNT (sizeof(tx_buses) / sizeof(tx_buses[0]))
+#define TX_BUS_COUNT 2
 
 static void configure_bus(CAN_HandleTypeDef *hcan, uint32_t filter_bank)
 {
