@@ -18,14 +18,14 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "adc.h"
 #include "can.h"
-#include "spi.h"
 #include "gpio.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "can_tms.h"
-#include "ads1256.h"
+//#include "ads1256.h"
 #include "thermistor.h"
 #include <stdint.h>
 /* USER CODE END Includes */
@@ -49,7 +49,8 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
-
+uint16_t seg_raw[6];
+extern volatile uint32_t adc_buf[6];
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -96,14 +97,14 @@ int main(void)
   MX_GPIO_Init();
   MX_CAN1_Init();
   MX_CAN2_Init();
-  MX_SPI1_Init();
+  MX_ADC1_Init();
   /* USER CODE BEGIN 2 */
   can_tms_init();
-  ads1256_init();
+  //ads1256_init();
 
   /* Latest raw count per pack thermistor + per-channel conversion-OK flags. */
-  static uint16_t seg_raw[ADS1256_THERM_COUNT];
-  static uint8_t  seg_valid[ADS1256_THERM_COUNT];
+
+  static uint8_t  seg_valid[6] = {1};
 
   uint32_t last_tx_tick = HAL_GetTick();
   uint32_t tick_count = 0;
@@ -121,11 +122,15 @@ int main(void)
       tick_count++;
 
       /* Read all 6 pack thermistors off the external ADS1256 over SPI1. */
-      //ads1256_read_all(seg_raw, seg_valid);
+      if(HAL_ADC_Start_DMA(&hadc1, (uint32_t *)adc_buf, 4) != HAL_OK){
+      	//int a = 0;
+      }
+
+
 
       /* Convert (PLACEHOLDER curve) + reduce to one Orion module frame. */
       can_tms_module_data_t module_data;
-      //thermistor_build_module_data(seg_raw, seg_valid, &module_data);
+      thermistor_build_module_data(adc_buf, seg_valid, &module_data);
 
       (void)can_tms_send_module_data(CAN_TMS_MODULE_INDEX, &module_data);
 
@@ -177,7 +182,7 @@ void SystemClock_Config(void)
   RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV4;
   RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV2;
 
-  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_3) != HAL_OK)
+  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_5) != HAL_OK)
   {
     Error_Handler();
   }

@@ -31,10 +31,10 @@ static const uint16_t volt_mv_lut[] = {
  * Assuming ADS1256 with VREF = 2.5V. */
 static uint16_t thermistor_raw_to_mv(uint16_t raw)
 {
-    uint32_t mv = ((uint32_t)raw * ADS1256_VREF_MV) / ADS1256_FULL_SCALE_16BIT;
-    if (mv > ADS1256_VREF_MV) {
-        mv = ADS1256_VREF_MV;
-    }
+    uint32_t mv = ((uint32_t)raw * 6600) / 4095; //changed to reflect layout of borrowed VCU board
+//    if (mv > ADS1256_VREF_MV) {
+//        mv = ADS1256_VREF_MV;
+//    }
     return (uint16_t)mv;
 }
 
@@ -93,7 +93,7 @@ int8_t thermistor_raw_to_c(uint16_t raw)
     return thermistor_mv_to_c(mv);
 }
 
-void thermistor_build_module_data(const uint16_t *raw, const uint8_t *valid,
+void thermistor_build_module_data(const uint32_t *raw, const uint8_t *valid,
                                   can_tms_module_data_t *out)
 {
     int16_t low = 127;
