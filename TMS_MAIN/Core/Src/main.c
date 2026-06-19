@@ -123,8 +123,8 @@ int main(void)
       last_tx_tick += TMS_TX_TICK_MS;
       tick_count++;
 
-      /* Read all 6 pack thermistors off the external ADS1256 over SPI1. */
-      if(HAL_ADC_Start_DMA(&hadc1, (uint32_t *)adc_buf, 4) != HAL_OK){
+      /* Read all 5 pack thermistors off ADC1 (internal, DMA scan). */
+      if(HAL_ADC_Start_DMA(&hadc1, (uint32_t *)adc_buf, 5) != HAL_OK){
       	int a = 0;
       	a++;
     	  //idk, go die or something
