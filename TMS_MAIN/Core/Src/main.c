@@ -20,6 +20,7 @@
 #include "main.h"
 #include "adc.h"
 #include "can.h"
+#include "dma.h"
 #include "gpio.h"
 
 /* Private includes ----------------------------------------------------------*/
@@ -49,8 +50,8 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
-uint16_t seg_raw[6];
-extern volatile uint32_t adc_buf[6];
+uint32_t seg_raw[5];
+extern volatile uint32_t adc_buf[5];
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -95,6 +96,7 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_DMA_Init();
   MX_CAN1_Init();
   MX_CAN2_Init();
   MX_ADC1_Init();
@@ -104,7 +106,7 @@ int main(void)
 
   /* Latest raw count per pack thermistor + per-channel conversion-OK flags. */
 
-  static uint8_t  seg_valid[6] = {1};
+  static uint8_t  seg_valid[5] = {1};
 
   uint32_t last_tx_tick = HAL_GetTick();
   uint32_t tick_count = 0;
@@ -123,14 +125,16 @@ int main(void)
 
       /* Read all 6 pack thermistors off the external ADS1256 over SPI1. */
       if(HAL_ADC_Start_DMA(&hadc1, (uint32_t *)adc_buf, 4) != HAL_OK){
-      	//int a = 0;
+      	int a = 0;
+      	a++;
+    	  //idk, go die or something
       }
 
 
 
       /* Convert (PLACEHOLDER curve) + reduce to one Orion module frame. */
       can_tms_module_data_t module_data;
-      thermistor_build_module_data(adc_buf, seg_valid, &module_data);
+      thermistor_build_module_data(seg_raw, seg_valid, &module_data);
 
       (void)can_tms_send_module_data(CAN_TMS_MODULE_INDEX, &module_data);
 

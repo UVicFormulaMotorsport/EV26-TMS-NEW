@@ -8,8 +8,8 @@
 
 #include "thermistor.h"
 
-#define ADS1256_FULL_SCALE_16BIT 32767
-#define ADS1256_VREF_MV 2500
+//#define ADS1256_FULL_SCALE_16BIT 32767
+//#define ADS1256_VREF_MV 2500
 
 /* Table 5: Temperature-Voltage LUT for the thermistor
  * Covers -40 °C to 120 °C with 5 °C steps (33 entries). 1 °C/LSB on the wire, so we can store as int8_t in the frame.
@@ -31,7 +31,9 @@ static const uint16_t volt_mv_lut[] = {
  * Assuming ADS1256 with VREF = 2.5V. */
 static uint16_t thermistor_raw_to_mv(uint16_t raw)
 {
-    uint32_t mv = ((uint32_t)raw * 6600) / 4095; //changed to reflect layout of borrowed VCU board
+	uint32_t mv = (raw*5000)/4095;
+
+//    uint32_t mv = 1300;
 //    if (mv > ADS1256_VREF_MV) {
 //        mv = ADS1256_VREF_MV;
 //    }
@@ -87,7 +89,8 @@ static int8_t thermistor_mv_to_c(uint16_t mv)
 }
 
 /* Convert raw ADC count to signed °C (1 °C/LSB on the wire). */
-int8_t thermistor_raw_to_c(uint16_t raw)
+// uint16_t raw = ; // times 1 if we need to store value
+inline int8_t thermistor_raw_to_c(uint16_t raw) // should this be 32?
 {
     uint16_t mv = thermistor_raw_to_mv(raw);
     return thermistor_mv_to_c(mv);
