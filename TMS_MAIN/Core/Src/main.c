@@ -20,7 +20,6 @@
 #include "main.h"
 #include "adc.h"
 #include "can.h"
-#include "dma.h"
 #include "gpio.h"
 
 /* Private includes ----------------------------------------------------------*/
@@ -50,8 +49,7 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
-uint32_t seg_raw[5];
-extern volatile uint32_t adc_buf[5];
+uint32_t seg_raw[CAN_TMS_THERMS_PER_MODULE];
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -96,7 +94,6 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
-  MX_DMA_Init();
   MX_CAN1_Init();
   MX_CAN2_Init();
   MX_ADC1_Init();
@@ -106,7 +103,7 @@ int main(void)
 
   /* Latest raw count per pack thermistor + per-channel conversion-OK flags. */
 
-  static uint8_t  seg_valid[5] = {1};
+  static uint8_t  seg_valid[CAN_TMS_THERMS_PER_MODULE] = {0};
 
   uint32_t last_tx_tick = HAL_GetTick();
   uint32_t tick_count = 0;
@@ -123,14 +120,8 @@ int main(void)
       last_tx_tick += TMS_TX_TICK_MS;
       tick_count++;
 
-      /* Read all 5 pack thermistors off ADC1 (internal, DMA scan). */
-      if(HAL_ADC_Start_DMA(&hadc1, (uint32_t *)adc_buf, 5) != HAL_OK){
-      	int a = 0;
-      	a++;
-    	  //idk, go die or something
-      }
-
-
+      /* Read all pack thermistors sequentially (polled, one at a time). */
+      adc_read_segments(seg_raw, seg_valid);
 
       /* Convert (PLACEHOLDER curve) + reduce to one Orion module frame. */
       can_tms_module_data_t module_data;

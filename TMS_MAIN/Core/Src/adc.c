@@ -21,11 +21,15 @@
 #include "adc.h"
 
 /* USER CODE BEGIN 0 */
-volatile uint32_t adc_buf[5] = {0};
+
+/* Segment thermistor channels, in segment order 0..4.
+ * seg0=PC1/IN11, seg1=PC3/IN13, seg2=PA1/IN1, seg3=PA3/IN3, seg4=PA5/IN5. */
+static const uint32_t SEG_CHANNELS[CAN_TMS_THERMS_PER_MODULE] = {
+  ADC_CHANNEL_11, ADC_CHANNEL_13, ADC_CHANNEL_1, ADC_CHANNEL_3, ADC_CHANNEL_5
+};
 /* USER CODE END 0 */
 
 ADC_HandleTypeDef hadc1;
-DMA_HandleTypeDef hdma_adc1;
 
 /* ADC1 init function */
 void MX_ADC1_Init(void)
@@ -46,15 +50,15 @@ void MX_ADC1_Init(void)
   hadc1.Instance = ADC1;
   hadc1.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV4;
   hadc1.Init.Resolution = ADC_RESOLUTION_12B;
-  hadc1.Init.ScanConvMode = ENABLE;
+  hadc1.Init.ScanConvMode = DISABLE;
   hadc1.Init.ContinuousConvMode = DISABLE;
   hadc1.Init.DiscontinuousConvMode = DISABLE;
   hadc1.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
   hadc1.Init.ExternalTrigConv = ADC_SOFTWARE_START;
   hadc1.Init.DataAlign = ADC_DATAALIGN_RIGHT;
-  hadc1.Init.NbrOfConversion = 5;
-  hadc1.Init.DMAContinuousRequests = ENABLE;
-  hadc1.Init.EOCSelection = ADC_EOC_SEQ_CONV;
+  hadc1.Init.NbrOfConversion = 1;
+  hadc1.Init.DMAContinuousRequests = DISABLE;
+  hadc1.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
   if (HAL_ADC_Init(&hadc1) != HAL_OK)
   {
     Error_Handler();
@@ -146,25 +150,6 @@ void HAL_ADC_MspInit(ADC_HandleTypeDef* adcHandle)
     GPIO_InitStruct.Pull = GPIO_NOPULL;
     HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
-    /* ADC1 DMA Init */
-    /* ADC1 Init */
-    hdma_adc1.Instance = DMA2_Stream0;
-    hdma_adc1.Init.Channel = DMA_CHANNEL_0;
-    hdma_adc1.Init.Direction = DMA_PERIPH_TO_MEMORY;
-    hdma_adc1.Init.PeriphInc = DMA_PINC_DISABLE;
-    hdma_adc1.Init.MemInc = DMA_MINC_ENABLE;
-    hdma_adc1.Init.PeriphDataAlignment = DMA_PDATAALIGN_HALFWORD;
-    hdma_adc1.Init.MemDataAlignment = DMA_MDATAALIGN_HALFWORD;
-    hdma_adc1.Init.Mode = DMA_NORMAL;
-    hdma_adc1.Init.Priority = DMA_PRIORITY_LOW;
-    hdma_adc1.Init.FIFOMode = DMA_FIFOMODE_DISABLE;
-    if (HAL_DMA_Init(&hdma_adc1) != HAL_OK)
-    {
-      Error_Handler();
-    }
-
-    __HAL_LINKDMA(adcHandle,DMA_Handle,hdma_adc1);
-
     /* ADC1 interrupt Init */
     HAL_NVIC_SetPriority(ADC_IRQn, 0, 0);
     HAL_NVIC_EnableIRQ(ADC_IRQn);
@@ -200,9 +185,6 @@ void HAL_ADC_MspDeInit(ADC_HandleTypeDef* adcHandle)
     HAL_GPIO_DeInit(GPIOA, GPIO_PIN_1|GPIO_PIN_3|GPIO_PIN_4|GPIO_PIN_5
                           |GPIO_PIN_6|GPIO_PIN_7);
 
-    /* ADC1 DMA DeInit */
-    HAL_DMA_DeInit(adcHandle->DMA_Handle);
-
     /* ADC1 interrupt Deinit */
     HAL_NVIC_DisableIRQ(ADC_IRQn);
   /* USER CODE BEGIN ADC1_MspDeInit 1 */
@@ -213,11 +195,29 @@ void HAL_ADC_MspDeInit(ADC_HandleTypeDef* adcHandle)
 
 /* USER CODE BEGIN 1 */
 
-extern uint32_t seg_raw[5];
-void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc){
-	for(int i = 0; i<5;i++){
-		seg_raw[i] = adc_buf[i];
-	}
+/* Read all segment thermistors sequentially, one conversion at a time.
+ * Blocking/polled — no DMA, no interrupts. raw[] and valid[] are
+ * CAN_TMS_THERMS_PER_MODULE long. valid[i] is set on a successful poll. */
+void adc_read_segments(uint32_t *raw, uint8_t *valid)
+{
+  ADC_ChannelConfTypeDef sConfig = {0};
+  sConfig.Rank = 1;
+  sConfig.SamplingTime = ADC_SAMPLETIME_56CYCLES;
+
+  for (uint8_t i = 0; i < CAN_TMS_THERMS_PER_MODULE; i++) {
+    sConfig.Channel = SEG_CHANNELS[i];
+    valid[i] = 0;
+    if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK) {
+      continue;
+    }
+    if (HAL_ADC_Start(&hadc1) == HAL_OK) {
+      if (HAL_ADC_PollForConversion(&hadc1, 10u) == HAL_OK) {
+        raw[i] = HAL_ADC_GetValue(&hadc1);
+        valid[i] = 1;
+      }
+    }
+    HAL_ADC_Stop(&hadc1);
+  }
 }
 /* USER CODE END 1 */
 

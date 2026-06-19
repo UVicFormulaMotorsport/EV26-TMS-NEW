@@ -29,7 +29,7 @@ extern "C" {
 #include "main.h"
 
 /* USER CODE BEGIN Includes */
-
+#include "can_tms.h"   /* CAN_TMS_THERMS_PER_MODULE */
 /* USER CODE END Includes */
 
 extern ADC_HandleTypeDef hadc1;
@@ -41,7 +41,7 @@ extern ADC_HandleTypeDef hadc1;
 void MX_ADC1_Init(void);
 
 /* USER CODE BEGIN Prototypes */
-
+void adc_read_segments(uint32_t *raw, uint8_t *valid);
 /* USER CODE END Prototypes */
 
 #ifdef __cplusplus

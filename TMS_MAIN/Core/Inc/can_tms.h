@@ -26,7 +26,7 @@
 #include <stdint.h>
 
 #define CAN_TMS_MODULE_INDEX          0u   /* single module, module# 0 */
-#define CAN_TMS_THERMS_PER_MODULE     6u   /* = the 6 battery packs */
+#define CAN_TMS_THERMS_PER_MODULE     5u   /* = the 5 battery packs */
 #define CAN_TMS_ADDR_CLAIM_ID         0x18EEFF80u
 #define CAN_TMS_THERM_DATA_ID         0x1839F380u
 

@@ -135,7 +135,7 @@ void thermistor_build_module_data(const uint32_t *raw, const uint8_t *valid,
         out->avg_c = (int8_t)(sum / count);
     }
 
-    out->therm_count = (uint8_t)CAN_TMS_THERMS_PER_MODULE;  // always 6 per spec 
+    out->therm_count = (uint8_t)CAN_TMS_THERMS_PER_MODULE;  // 5 packs
     out->high_id = high_id;
     out->low_id = low_id;
 }
